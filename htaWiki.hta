@@ -1,0 +1,416 @@
+<html>
+	<head>
+	<title>htaWiki - Wiki on HTML Applications</title>
+	<HTA:APPLICATION
+		INNERBORDER = "no"
+		SCROLLFLAT = "no"
+		ICON = "./htaWiki.ICO"
+	/>
+	<script Language="VBScript"><!--
+Option Explicit
+Public Const dbOpenDynaset = 2
+Public Const dbSeeChanges = 512
+Public Const DBName = "./htaWiki.MDB"
+Public Const DBEngeinName = "DAO.DBEngine.36" '(Access2000/2003) WindowsXp 
+'Public Const DBEngeinName = "DAO.DBEngine.120" '(Access2007/2010) WindowsXp
+'OpenDatabase
+Dim dbEngine,wdb
+Set dbEngine = CreateObject(DBEngeinName)
+Set wdb = dbEngine.Workspaces(0).OpenDatabase(DBName, False, False) 'Writable
+'Set wdb = dbEngine.Workspaces(0).OpenDatabase(DBName, False, True) 'Read Only
+
+Sub PageShow (ByVal PageName)
+	Dim RS
+	Set RS = wdb.OpenRecordset("Select * from WikiDb where name = '" & PageName & "'", dbOpenDynaset, dbSeeChanges)
+	If RS.EOF Then PageEdit(PageName) : Exit Sub
+	SetContents RS.Fields("name"), RS.Fields("cache")
+	PageMenuUpDate(RS.Fields("name"))
+End Sub
+
+Sub PageEdit (ByVal PageName)
+	Dim RS
+	dim text,content,update_time
+	Set RS = wdb.OpenRecordset("Select * from WikiDb where name = '" & PageName & "'", dbOpenDynaset, dbSeeChanges)
+	If RS.EOF Then
+		content = ""
+		update_time = 0
+	Else
+		content = RS.Fields("contents")
+		name = RS.Fields("name")
+		update_time = RS.Fields("update_time")
+	End If
+	text = "<hr><textarea name='textarea' cols=70 rows = 20>" & content & "</textarea><br>"
+	If RS.EOF Then
+		text = text & "<input type='submit' value='更新' onClick='PageAdd(" & chr(34) & PageName & chr(34) &")'>"
+	Else
+		text = text & "<input type='submit' value='更新' onClick='PageUpDate(" & chr(34) & PageName & chr(34) &")'>"
+	End If
+	text = text & "<input type='submit' value='プレビュー' onClick='PagePreview(" & chr(34) & PageName & chr(34) &")'>"
+	text = text & vbCrLf & "<div class='update_time' id ='update_time'>" & update_time & "</div>"
+	text = text & document.all("rule").innerHTML
+	SetContents PageName, text
+End Sub
+
+Sub PagePreview (ByVal PageName)
+	dim text,content,update_time
+	content = document.all("wiki").all("textarea").innerHTML
+	update_time = document.all("wiki").all("update_time").innerHTML
+	text = "<b>これはプレビューです。更新はまだ保存されていません。更新ボタンを押してください</b><hr>"
+	text = text & DocToHtml(content)
+	text = text & "<hr><textarea name='textarea' cols=70 rows = 20>" & content & "</textarea><br>"
+	If update_time = "0" Then
+		text = text & "<input type='submit' value='更新' onClick='PageAdd(" & chr(34) & PageName & chr(34) &")'>"
+	Else
+		text = text & "<input type='submit' value='更新' onClick='PageUpDate(" & chr(34) & PageName & chr(34) &")'>"
+	End If
+	text = text & "<input type='submit' value='プレビュー' onClick='PagePreview(" & chr(34) & PageName & chr(34) &")'>"
+	text = text & vbCrLf & "<div class='update_time' id ='update_time'>" & update_time & "</div>"
+	text = text & document.all("rule").innerHTML
+	SetContents PageName, text
+End Sub
+
+Sub PageUpDate(ByVal PageName)
+	Dim content,id
+	Dim RS	
+	Set RS = wdb.OpenRecordset("WikiDb", dbOpenDynaset, dbSeeChanges)
+	RS.FindFirst("name = '" & PageName & "'")
+	If RS.NoMatch = True Then
+		PageAdd(PageName)
+	ElseIf document.all("wiki").all("textarea").innerHTML = "" Then
+		If CStr(RS.Fields("update_time")) = document.all("wiki").all("update_time").innerHTML Then
+			RS.Delete
+			SetContents "ページを削除しました", ""
+		Else
+			msgbox "別のユーザにより更新されています。" & vbCrLf & "再度ページを読込んでください。"
+		End If
+		Exit Sub
+	Else
+		If CStr(RS.Fields("update_time")) = document.all("wiki").all("update_time").innerHTML Then
+			content = document.all("wiki").all("textarea").innerHTML
+			RS.Edit
+			RS.Fields("name") = PageName
+			RS.Fields("contents") = content
+			RS.Fields("cache") = DocToHtml(content)
+			RS.Fields("update_time") = now()
+			RS.Update
+		Else
+			msgbox "別のユーザにより更新されています。" & vbCrLf & "メモ帳などにデータを退避し、再度ページを読込んでください。"
+			Exit Sub
+		End If
+	End If
+	PageShow(PageName)
+End Sub
+
+Sub PageAdd(ByVal PageName)
+	Dim RS
+	Dim content
+	content = document.all("wiki").all("textarea").innerHTML
+	Set RS = wdb.OpenRecordset("WikiDb")
+	RS.AddNew
+	RS.Fields("name") = PageName
+	RS.Fields("contents") = content
+	RS.Fields("cache") = DocToHtml(content)
+	RS.Fields("update_time") = now()
+	RS.Update
+	PageShow(PageName)
+End Sub
+
+Sub PageMenuUpDate(ByVal PageName)
+	Dim text
+	text = ""
+	text = text & "<a href='#' onClick='PageEdit(" & chr(34) & PageName & chr(34) &")'>編集</a> |"
+	text = text & "<a href='#' onClick='PageCreate1'>新規作成</a> |" 'ToDo
+	text = text & "<a href='#' onClick='PageList'>一覧</a> |"
+	text = text & "<a href='#' onClick='PageShow(" & chr(34) & "FrontPage" & chr(34) &")'>FrontPage</a> |"
+	text = text & "<a href='#' onClick='PageSearch'>検索</a> |"
+	text = text & "<a href='#' onClick='PageUpdateList'>更新履歴</a>"
+	document.all("tools").innerHTML = text
+End Sub
+
+Sub PageSearch()
+	Dim text,keyword,resList,sql
+	Dim RS	
+	text = ""
+	keyword = ""
+	resList = vbCrLf
+	If document.all("title").innerHTML = "<H1 class=header>ページ検索</H1>" Then keyword = document.all("wiki").all("keyword").value
+	text = text & "<input type='text' size='20' value='" & keyword & "' name='keyword' id=keyword>"
+	text = text & "<input type='submit' value='検索' onClick='PageSearch()'>"
+	If keyword <> "" Then
+		sql = "Select name from WikiDb where name like '*" & keyword & "*' Or contents like '*" & keyword & "*'"
+		Set RS = wdb.OpenRecordset(sql , dbOpenDynaset, dbSeeChanges)
+		Do Until RS.EOF
+			resList = resList & "-[" & RS.Fields("name") & "]" & vbCrLf
+			RS.MoveNext
+		Loop
+		text = text & DocToHtml(resList)
+	End If
+	SetContents "ページ検索", text
+	PageMenuUpDate("FrontPage")
+End Sub
+
+Sub PageList()
+	Dim RS
+	Dim text
+	Set RS = wdb.OpenRecordset("Select name from WikiDb", dbOpenDynaset, dbSeeChanges)
+	text = ""
+	Do Until RS.EOF
+		text = text & "-[" & RS.Fields("name") & "]" & vbCrLf
+		RS.MoveNext
+	Loop
+	SetContents "ページ一覧", DocToHtml(text)
+	PageMenuUpDate("FrontPage")
+End Sub
+
+Sub PageUpdateList()
+	Dim RS
+	Dim text
+	Set RS = wdb.OpenRecordset("Select top 50 update_time,name from WikiDb order by update_time desc", dbOpenDynaset, dbSeeChanges)
+	text = ""
+	Do Until RS.EOF
+		text = text & "-" & RS.Fields("update_time") & " [" & RS.Fields("name") & "]" & vbCrLf
+		RS.MoveNext
+	Loop
+	SetContents "更新履歴", DocToHtml(text)
+	PageMenuUpDate("FrontPage")
+End Sub
+
+Sub PageCreate1()
+	Dim text
+	text = "<hr>" & "<input type='text' size='20' value='' name='newpage' id=newpage>"
+	text = text & "<input type='submit' value='新規作成' onClick='PageCreate2'>"
+	SetContents "新規追加",text
+End Sub
+
+Sub PageCreate2()
+	PageEdit(document.all("wiki").all("newpage").value)
+End Sub
+
+Sub SetContents(ByVal title, ByVal wiki)
+	document.all("title").innerHTML = "<h1 class='header'>" & title & "</h1>"
+	document.all("wiki").innerHTML = wiki
+End Sub
+
+Function DocToHtml(ByVal docText)
+	dim i, ul, table, result, Line, pre, blockquote, h, toc
+	dim regTable
+	Set regTable = new RegExp
+	regTable.IgnoreCase = False
+	regTable.Global = True
+	regTable.Pattern = ","
+	ul = 0
+	table = 0
+	pre = 0
+	blockquote = 0
+	h = 0
+	For Each Line in split(docText, vbNewLine)
+		'----- Tag Close
+		if (Left(Line, 1) <> "," and table = 1) Then result = result & "</table>" & vbNewLine : table = 0
+		if (left(Line, 1) <> " " and pre = 1) Then result = result & "</pre>" &vbNewLine :pre = 0
+		if (left(Line, 4) <> "&gt;" and blockquote = 1) Then result = result & "</blockquote>" &vbNewLine :blockquote = 0
+		if (left(Line, 1) <> "-" and ul > 0) then
+			For i = 1 to ul
+				result = result & "</ul>"
+			Next
+			ul = 0
+		End if
+		'---------------
+		'----- Header
+		if Left(Line, 3) = "***" Then
+			toc = toc & "---<a href=""#h" & h & """>" & WordReplace(Right(Line, Len(Line) - 3)) & "</a>" & vbNewLine
+			result = result & "<a name=""#h" & h & """><h3>" & WordReplace(Right(Line, Len(Line) - 3)) & "</h3>"
+			h = h + 1
+		Elseif	Left(Line, 2) = "**" Then
+			toc = toc & "--<a href=""#h" & h & """>" & WordReplace(Right(Line, Len(Line) - 2)) & "</a>" & vbNewLine
+			result = result & "<a name=""#h" & h & """><h2>" & WordReplace(Right(Line, Len(Line) - 2)) & "</h2>"
+			h = h + 1
+		Elseif	Left(Line, 1) = "*" Then
+			toc = toc & "-<a href=""#h" & h & """>" & WordReplace(Right(Line, Len(Line) - 1)) & "</a>" & vbNewLine
+			result = result & "<a name=""#h" & h & """><h1>" & WordReplace(Right(Line, Len(Line) - 1)) & "</h1>"
+			h = h + 1
+		'----- Horizontal Rule
+		Elseif Line = "----" Then
+			result = result & "<hr>"
+		'----- Unordered List
+		Elseif	Left(Line, 3) = "---" Then
+			if ul < 3 Then 
+				For i=1 to (3 - ul)
+					result = result & "<ul>" & vbNewLine
+				Next
+			End if
+			result = result & "<li>" & WordReplace(Right(Line, Len(Line) - 3)) & "</li>"
+			ul = 3
+		Elseif Left(Line, 2) = "--" Then
+			if ul < 2 Then 
+				For i=1 to (2 - ul)
+					result = result & "<ul>" & vbNewLine
+				Next
+			Elseif ul = 3 Then
+				result = result & "</ul>" & vbNewLine
+			End if
+			result = result & "<li>" & WordReplace(Right(Line, Len(Line) - 2)) & "</li>"
+			ul = 2
+		Elseif Left(Line, 1) = "-" Then
+			if ul < 1 Then
+				result = result & "<ul>" & vbNewLine
+			Elseif ul > 1 Then
+				For i=1 to ul-1
+					result = result & "</ul>" & vbNewLine
+				Next
+			End if
+			result = result & "<li>" & WordReplace(Right(Line, Len(Line) - 1)) & "</li>"
+			ul = 1
+		Elseif Left(Line, 1) = "," Then		'----------Table
+			if table = 0 Then
+				result = result & "<table border=1>" & vbNewLine
+				table = 1
+			End if
+			result = result & "<tr><td>" & regTable.Replace(Right(Line, Len(Line) - 1), "</td><td>") & "</td></tr>"	
+		Elseif Left(Line, 1) = " " Then		'----------Pre
+			if pre = 0 Then
+				result = result & "<pre>" & vbNewLine
+				pre = 1
+			End if
+			result = result & Right(Line, Len(line)-1)
+		Elseif Left(Line, 4) = "&gt;" Then	'----------Blockquote
+			if blockquote = 0 Then
+				result = result & "<blockquote>" & vbNewLine
+				blockquote = 1
+			End if
+			result = result & Right(Line, Len(line)-4)
+		Else
+			result = result & WordReplace(Line)
+		End if
+		result = result & vbNewLine
+	Next
+	if pre = 1 Then : result = result & "</pre>"
+	if table = 1 Then : result = result & "</table>"
+	if ul > 0 then
+		For i = 1 to ul
+			result = result & "</ul>"
+		Next
+	End if
+	
+	dim regItalic
+	Set regItalic = new RegExp
+	regItalic.IgnoreCase = False
+	regItalic.Global = True
+	regItalic.Pattern = "'''(.+)'''"
+	result = regItalic.Replace(result, "<i>$1</i>")
+
+	dim regStrong
+	Set regStrong = new RegExp
+	regStrong.IgnoreCase = False
+	regStrong.Global = True
+	regStrong.Pattern = "''(.+)''"
+	result = regStrong.Replace(result, "<b>$1</b>")
+
+	dim regURL
+	Set regURL = new RegExp
+	regURL.IgnoreCase = False
+	regURL.Global = True
+	regURL.Pattern = "((mailto|http|https|ftp):[!-;=?-~]+)"
+	result = regURL.Replace(result, "<a href=""$1"">$1</a>")
+
+	dim regFile
+	Set regFile = new RegExp
+	regFile.IgnoreCase = False
+	regFile.Global = True
+	regFile.Pattern = "(\\\\[^<]+)"
+	result = regFile.Replace(result, "<a href=""file:///$1"">$1</a>")
+
+	If h > 1 then
+		result = "<h2>目次</h2>" & DocToHtml(toc) & result
+	End If
+	DocToHtml = result
+End Function
+
+Function WordReplace (ByVal Line)
+	Dim tmpText
+	Dim regEx	
+	Set regEx = new RegExp
+	regEx.Pattern = "\[(\S+?)\]"
+	regEx.IgnoreCase = False
+	regEx.Global = True
+	tmpText = "<a href='#' onClick='PageShow(""$1"")'>$1</a>"
+	WordReplace = regEx.Replace(Line,tmpText)
+End Function
+
+	//--></script>
+	<link href="./wiki.css" media="all" rel="Stylesheet" type="text/css" />
+	</head>
+	<body>
+		<div class='tools' id='tools'></div>
+		<div class='title' id ='title'></div>
+		<div class='wiki' id ='wiki'>
+			<h1>アプリケーションの起動に失敗しました</h1>
+			<h2>トラブルシューティング</h2>
+			何らかの問題が発生しているようです。以下の参考情報を確認してください。
+			<h3>ActiveXコンポーネントはオブジェクトを作成できません。:'DAO.DBEngine.XXX'</h3>
+			htaWikiはデータアクセスにMicrosoftのDAOエンジンを利用しています。
+			お使いの環境によってインストールされているDAOのバージョンが異なります。htaWiki.htaの19行目にあるDAOの定義を見直してください。 
+			<blockquote>
+			＜Access2007 または Access2010がインストールされている場合＞<br />
+			'Public Const DBEngeinName = "DAO.DBEngine.36" '(Access2000/2003) WindowsXp<br />
+			Public Const DBEngeinName = "DAO.DBEngine.120" '(Access2007/2010) WindowsXp
+			</blockquote>
+			<blockquote>
+			＜Access2000 または Access2003がインストールされている場合＞<br />
+			Public Const DBEngeinName = "DAO.DBEngine.36" '(Access2000/2003) WindowsXp<br /> 
+			'Public Const DBEngeinName = "DAO.DBEngine.120" '(Access2007/2010) WindowsXp
+			</blockquote>
+			上記以外の場合は、Googleなどで利用可能なDAOを調べる方法を確認して、htaWiki.htaを書き換えてください。
+			<h3>htaWiki.MDBを開くことができません。</h3>
+			htaWiki.MDBを書き込みモードで開くことができませんでした。ファイルの書き込み権限を確認してください。
+			もしかすると、htaWiki.MDBを配置したディスクに空き容量が無いのかもしれません。
+			なお、htaWikiをCDなどで配布する場合は、htaWiki.htaの24行目あたりを書き換えると、読み取り専用で開くようになります。
+			<blockquote>
+			'Set wdb = dbEngine.Workspaces(0).OpenDatabase(DBName, False, False) 'Normal <br />
+			Set wdb = dbEngine.Workspaces(0).OpenDatabase(DBName, False, True) 'Read Only
+			</blockquote>
+			<h3>その他のエラー</h3>
+			htaWikiのバグかもしれません。解決できない場合は、利用をあきらめてください。
+		</div>
+		<div class='rule' id='rule' style='display:none'>
+			<hr>
+			<h3>テキスト整形のルール</h3>
+			通常は入力した文字がそのまま出力されますが、以下のルールに従ってテキスト整形を行うことができます。
+			<h4>基本ルール</h4>
+			<ul>
+				<li>行頭がスペースで始まっていると、その段落は整形済みとして扱われます。</li>
+				<li>HTMLのタグは書けません。</li>
+			</ul>
+			<h4>文字飾り</h4>
+			<ul>
+				<li>シングルクォート2個ではさんだ部分は、<b>ボールド</b>になります。</li>
+				<li>シングルクォート3個ではさんだ部分は、<i>イタリック</i>になります。</li>
+			</ul>
+			<h4>見出し</h4>
+			<ul>
+				<li>アスタリスク(*)を行頭に書くと、大見出しになります。</li>
+				<li>アスタリスク2個(**)を行頭に書くと、中見出しになります。</li>
+				<li>アスタリスク3個(***)を行頭に書くと、小見出しになります。</li>
+				<li>見出しが複数あると自動的に目次を追加します。</li>
+			</ul>
+			<h4>箇条書き、水平線、引用文</h4>
+			<ul>
+				<li>マイナス(-)を行頭に書くと、箇条書きになります。- -- --- の3レベルがあります。</li>
+				<li>マイナス4個(----)を行頭に書くと、水平線になります。</li>
+				<li>&gt;を行頭に書くと、引用文が書けます。</li>
+			</ul>
+			<h4>ハイパーリンク</h4>
+			<ul>
+				<li>http://www.example.com/のようなURLは自動的にリンクになります。</li>
+				<li>大かっこ[ ]でくくった文字列を書くと、ページ名になります。大かっこの中にはスペースを含めてはいけません。日本語も使えます。</li>
+			</ul>
+			<h4>テーブル</h4>
+			<ul>
+				<li>コンマ(,)を行頭に書くと、テーブル(表)が作れます。</li>
+			</ul>
+		</div>
+  	</body>
+	<script Language="VBScript"><!--
+	window.resizeto 600, 550
+	PageShow("FrontPage")
+	//--></script>
+</html>
