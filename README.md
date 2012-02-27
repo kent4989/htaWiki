@@ -1,46 +1,46 @@
 htaWiki / Microsoft HTML Application (HTA) Based Wiki Clone 
 ======================
 [Microsoft HTML Application (HTA)](http://en.wikipedia.org/wiki/HTML_Application)
-�Ŏ������ꂽWiki�ł��B���W�b�N��VBScript�Ŏ�������Ă��܂��B�����͈ȉ��̒ʂ�ł��B
+で実装されたWikiです。ロジックはVBScriptで実装されています。特徴は以下の通りです。
 
-+ ���s��Web�T�[�o�𗧂��グ��K�v������܂���B
-+ ���[�J���t�H���_��A���L�t�@�C���T�[�o��ɔz�u���ė��p���邱�Ƃ��ł��܂��B
-+ ���������o�[�ł̋��L���p���\�ł��B
++ 実行にWebサーバを立ち上げる必要がありません。
++ ローカルフォルダや、共有ファイルサーバ上に配置して利用することができます。
++ 複数メンバーでの共有利用が可能です。
 
-�Z�L�����e�B�K���Ȃǂ̉e���ŃT�[�o�̒ǉ���A�v���P�[�V�����̃C���X�g�[����������
-���悤�Ȋ���Wiki���g�p�������ꍇ�Ȃǂɗ��p���邱�Ƃ�z�肵�Ă��܂��B
+セキュリティ規制などの影響でサーバの追加やアプリケーションのインストールが制限さ
+れるような環境でWikiを使用したい場合などに利用することを想定しています。
 
-�X�N���[���V���b�g
+スクリーンショット
 ------
 
-�C���X�g�[�����@
+インストール方法
 ------
-�K���ȃt�H���_�ɔz�u���āAhtaWiki.hta�����s���Ă��������B
+適当なフォルダに配置して、htaWiki.htaを実行してください。
 
-�ғ�����
+稼働条件
 ------
-+ Microsoft Internet Explorer 5.0 �ȏ�
-+ Microsoft DAO(Data Access Objects) �c�ʏ� Microsoft Office�ɓ�������Ă��܂��B
++ Microsoft Internet Explorer 5.0 以上
++ Microsoft DAO(Data Access Objects) …通常 Microsoft Officeに同梱されています。
 
-�X�V����
+更新履歴
 ----------
-1. 2012/2/27 Version 0.1 ���J
+1. 2012/2/27 Version 0.1 公開
 
-�ӎ�
+謝辞
 ----------
-htaWiki�́A�ȉ��̃v���_�N�g�����ɂ��č���Ă��܂��B
+htaWikiは、以下のプロダクトを元にして作られています。
 
 + [eruWiki](http://pediandic.web.fc2.com/) Copyright &copy; 2006 nHand All rights reserved.
 
-htaWiki�́A�ȉ��̃T�C�g���Q�l�ɍ쐬���Ă���܂��B
-���΂炵���T�C�g�ƃ\�t�g�E�F�A�Ɋ��ӂ��܂��B
+htaWikiは、以下のサイトを参考に作成しております。
+すばらしいサイトとソフトウェアに感謝します。
 
-+ [YukiWiki](http://www.hyuki.com/yukiwiki/) htaWiki��YukiWiki�̋@�\�ƃ}�[�N�A�b�v���Q�l�ɂ��Ă��܂��B
-+ [VBScript��wiki - neko7 wiki](http://www.forgetmenot.jp/index.cgi?page=VBScript%A4%C7wiki)
++ [YukiWiki](http://www.hyuki.com/yukiwiki/) htaWikiはYukiWikiの機能とマークアップを参考にしています。
++ [VBScriptでwiki - neko7 wiki](http://www.forgetmenot.jp/index.cgi?page=VBScript%A4%C7wiki)
 
-���C�Z���X
+ライセンス
 ----------
-Copyright &copy; 2012 [kent4989](http://agnozingdays.hatenablog.com/)
+Copyright &copy; 2012 [kent4989](http://agnozingdays.hatenablog.com/)  
 Licensed under the [Apache License, Version 2.0][Apache] 
 [Apache]: http://www.apache.org/licenses/LICENSE-2.0
 
