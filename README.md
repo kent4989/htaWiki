@@ -12,6 +12,7 @@ htaWiki / Microsoft HTML Application (HTA) Based Wiki Clone
 
 スクリーンショット
 ------
+![Screenshot](https://github.com/downloads/kent4989/htaWiki/htaWiki-ScreenShot.png)
 
 インストール方法
 ------
